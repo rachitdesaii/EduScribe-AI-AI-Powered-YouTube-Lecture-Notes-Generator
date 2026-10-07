@@ -1,46 +1,49 @@
-# Angular Frontend — AI Notes Generator
+# 🖥️ EduScribe AI — Angular Frontend
 
-Standalone Angular application (Angular 21) with routing and Angular Material.
+The modern Single Page Application (SPA) frontend for **EduScribe AI**, built with Angular 21, Angular Material, and Angular Signals.
 
-## Features
+## 🚀 Quick Start
 
-- Routing enabled (`app.routes.ts`), Home route lazy-loaded
-- Angular Material (Azure/Blue theme, Material 3)
-- Fully responsive layout (mobile / tablet / desktop breakpoints)
-- `HomeComponent`: title, input field, "Generate Notes" button, loading spinner, output cards
-- `ApiService`: typed HTTP client wrapper for the backend API
-- No authentication/login
-
-## Setup
-
+### 1. Install Dependencies
 ```bash
 npm install
+```
+
+### 2. Run Development Server
+```bash
 npm start
 ```
 
-App runs at `http://localhost:4200`.
+Navigate to `http://localhost:4200` in your web browser.
 
-## Build
+---
 
-```bash
-npm run build
-```
+## 🎨 Key Features & UI Capabilities
 
-Output goes to `dist/angular-frontend`.
+- **Signals Architecture**: Fast, reactive state management using Angular Signals.
+- **Angular Material Design**: Polished, accessible cards, buttons, badges, and tabs.
+- **Transcript Search & Timestamp Deep-linking**: Jump to exact video timestamps on YouTube or search text in real-time.
+- **Dual Reading Modes**: Toggle between timestamped segments and continuous reading.
+- **AI Study Note Cards**: Interactive cards for Executive Summaries, Key Takeaways, Concept Glossaries, and Action Items.
+- **One-Click Copy**: Instant clipboard copying with UI feedback.
 
-## Test
+---
 
-```bash
-npm test
-```
+## 🔧 Configuration
 
-## Backend connection
-
-The API base URL is configured in:
+The backend API base URL is configured in:
 - `src/environments/environment.ts` (dev): `http://localhost:5000/api`
 - `src/environments/environment.prod.ts` (prod): `/api`
 
-`ApiService.generateNotes()` calls `POST {apiUrl}/notes/generate` with `{ prompt: string }`
-and expects `{ success: boolean, notes: [{ id, title, content }] }` in response.
-Update this contract in `src/app/core/services/api.ts` and
-`src/app/core/models/note.model.ts` to match your actual backend endpoint.
+---
+
+## 🧪 Testing & Build
+
+```bash
+# Run unit tests via Vitest
+npm test
+
+# Build production bundle
+npm run build
+```
+Output artifacts will be generated in `dist/angular-frontend`.
