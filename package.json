@@ -1,0 +1,15 @@
+{
+  "name": "ai-powered-youtube-lecture-note-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-Powered YouTube Lecture Note Generator monorepo",
+  "scripts": {
+    "start": "npm --prefix backend-project start",
+    "dev:backend": "npm --prefix backend-project run dev",
+    "dev:frontend": "npm --prefix angular-frontend start",
+    "build:frontend": "npm --prefix angular-frontend run build",
+    "test:backend": "npm --prefix backend-project test",
+    "test:frontend": "npm --prefix angular-frontend test",
+    "test": "npm run test:backend && npm run test:frontend"
+  }
+}

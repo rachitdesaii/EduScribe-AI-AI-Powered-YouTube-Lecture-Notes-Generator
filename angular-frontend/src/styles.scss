@@ -1,0 +1,120 @@
+/* Global styles + design tokens for the Lecture Notes app. */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$violet-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: Inter,
+    density: 0,
+  ));
+
+  // ---- Brand palette override -------------------------------------------
+  // Angular Material's M3 theme above gives us correctly-structured
+  // components (elevation, states, contrast pairs); these overrides swap
+  // in our own ink/highlighter palette instead of the generated defaults,
+  // so the app doesn't read as a stock Material template.
+  //
+  // Ink-blue primary evokes focused reading/writing; the amber accent is
+  // literally the color of a highlighter pen marking a key point - a
+  // direct nod to what this app produces (lecture notes to study from).
+  --mat-sys-primary: #24304e;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: #dde3f3;
+  --mat-sys-on-primary-container: #182142;
+
+  --mat-sys-secondary: #b3791f;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: #fbe6bf;
+  --mat-sys-on-secondary-container: #4a3300;
+
+  --mat-sys-error: #a6392c;
+  --mat-sys-on-error: #ffffff;
+  --mat-sys-error-container: #fbe4e0;
+  --mat-sys-on-error-container: #5c1a10;
+
+  --mat-sys-surface: #f7f7f5;
+  --mat-sys-surface-container-lowest: #ffffff;
+  --mat-sys-surface-container-low: #f2f2ef;
+  --mat-sys-surface-container: #ececea;
+  --mat-sys-surface-container-high: #e5e5e2;
+  --mat-sys-surface-container-highest: #dfdedb;
+  --mat-sys-on-surface: #1d1d1b;
+  --mat-sys-on-surface-variant: #5b5b57;
+  --mat-sys-outline: #7c7c77;
+  --mat-sys-outline-variant: #dcdcd8;
+
+  // A calm, muted success tone. Material's base system has no "success"
+  // role, so this is our own token, used only by the success banner.
+  --app-success: #2e6b46;
+  --app-success-container: #e1f0e6;
+  --app-on-success-container: #163a24;
+
+  // ---- Custom design tokens (not part of Material's system) -------------
+  // 8px spacing scale, used throughout component styles for consistency.
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+// Visible keyboard focus everywhere (accessibility quality floor) -
+// Material components mostly handle this already; this is a backstop
+// for plain elements.
+:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+// ---- Shared animation keyframes ------------------------------------------
+
+// Subtle shimmer for skeleton loading placeholders.
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+// One deliberate reveal for the results grid when it first appears -
+// not a per-card hover effect, a single orchestrated moment.
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
