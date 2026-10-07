@@ -116,6 +116,8 @@ export async function generateNotesFromYoutubeUrl(url, options = {}, deps = {}) 
   return {
     videoId,
     transcriptLanguage: transcriptResult.data.language,
+    fullText: transcriptResult.data.fullText,
+    segments: transcriptResult.data.segments,
     notes: geminiResult.data,
   };
 }

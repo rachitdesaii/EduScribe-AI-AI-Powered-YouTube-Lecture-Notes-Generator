@@ -1,376 +1,326 @@
-<div class="page">
-  <header class="brand-bar">
-    <div class="brand-bar__left">
-      <mat-icon class="brand-bar__icon" aria-hidden="true">smart_display</mat-icon>
-      <span class="brand-bar__name">YouTube Lecture Notes & Transcript</span>
+<div class="page-container">
+  <!-- Global App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand" (click)="resetToHome()" role="button" tabindex="0" (keydown.enter)="resetToHome()">
+        <div class="brand-logo">
+          <mat-icon class="brand-icon" aria-hidden="true">auto_stories</mat-icon>
+        </div>
+        <span class="brand-title">EduScribe AI</span>
+      </div>
+      <div class="header-tagline">AI LECTURE NOTE GENERATOR</div>
     </div>
-    <span class="brand-bar__badge">AI-Powered</span>
   </header>
 
-  <main class="hero">
-    <h1 class="hero__title">Extract Full Transcripts & AI Study Notes</h1>
-    <p class="hero__subtitle">
-      Paste any YouTube lecture URL (from short clips to 2+ hour university lectures) to load the complete transcript, then generate structured summaries, key points, and concepts.
-    </p>
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <!-- ========================================== -->
+    <!-- STATE 1: INITIAL HERO / INPUT STATE        -->
+    <!-- ========================================== -->
+    @if (!loading() && !notes() && !errorMessage()) {
+      <section class="hero-wrapper">
+        <div class="badge-pill">
+          AI-POWERED ACADEMIC PRODUCTIVITY
+        </div>
 
-    <!-- URL Input Section -->
-    <div class="hero__form">
-      <mat-form-field appearance="outline" class="hero__field">
-        <mat-label>YouTube video URL</mat-label>
-        <input
-          matInput
-          type="url"
-          placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-          [(ngModel)]="videoUrl"
-          (keydown)="onInputKeydown($event)"
-          [disabled]="loadingTranscript()"
-          aria-label="YouTube video URL"
-        />
-        <mat-icon matPrefix class="field-icon" aria-hidden="true">link</mat-icon>
-      </mat-form-field>
+        <h1 class="hero-title">
+          Turn YouTube lectures<br />
+          into clear, structured<br />
+          study notes.
+        </h1>
 
-      <button
-        mat-flat-button
-        color="primary"
-        class="hero__generate-btn"
-        [disabled]="isGenerateDisabled"
-        (click)="onGenerateClick()"
-        id="fetch-transcript-btn"
-      >
-        @if (loadingTranscript()) {
-          <span class="hero__btn-content">
-            <mat-spinner diameter="18" strokeWidth="2" />
-            Fetching Full Transcript…
-          </span>
-        } @else {
-          <span class="hero__btn-content">
-            <mat-icon aria-hidden="true">subtitles</mat-icon>
-            Fetch Transcript
-          </span>
-        }
-      </button>
-    </div>
+        <p class="hero-subtitle">
+          Paste a lecture link and let AI transform the content into concise, academic-grade study notes in seconds.
+        </p>
 
-    <!-- Error Alert -->
-    @if (errorMessage(); as message) {
-      <div class="alert alert--error" role="alert">
-        <mat-icon class="alert__icon" aria-hidden="true">error_outline</mat-icon>
-        <p class="alert__text">{{ message }}</p>
-        <button
-          mat-icon-button
-          class="alert__dismiss"
-          aria-label="Dismiss error"
-          (click)="dismissError()"
-        >
-          <mat-icon aria-hidden="true">close</mat-icon>
-        </button>
-      </div>
-    }
+        <div class="input-card">
+          <label class="input-label" for="youtube-url-input">YOUTUBE LECTURE URL</label>
+          <div class="input-group">
+            <mat-icon class="input-icon" aria-hidden="true">link</mat-icon>
+            <input
+              id="youtube-url-input"
+              type="url"
+              class="url-input"
+              placeholder="Paste a YouTube URL..."
+              [(ngModel)]="videoUrl"
+              (keydown)="onKeydown($event)"
+              aria-label="Paste a YouTube URL"
+            />
+            <button
+              type="button"
+              class="btn-primary btn-generate"
+              [disabled]="!isInputValid()"
+              (click)="onGenerateNotes()"
+            >
+              Generate Notes ✦
+            </button>
+          </div>
+        </div>
 
-    <!-- Loading Transcript State -->
-    @if (loadingTranscript()) {
-      <section class="results" aria-live="polite" aria-busy="true">
-        <div class="loading-panel">
-          <mat-spinner diameter="36" strokeWidth="3" />
-          <p class="loading-panel__title">Retrieving video captions & timestamps…</p>
-          <p class="loading-panel__sub">Handling complete video length (even 2+ hour lectures)</p>
+        <div class="feature-bullets">
+          <div class="bullet-item">
+            <mat-icon class="bullet-icon" aria-hidden="true">check</mat-icon>
+            <span>Transcript-first</span>
+          </div>
+          <div class="bullet-item">
+            <mat-icon class="bullet-icon" aria-hidden="true">check</mat-icon>
+            <span>AI-powered</span>
+          </div>
+          <div class="bullet-item">
+            <mat-icon class="bullet-icon" aria-hidden="true">check</mat-icon>
+            <span>Structured notes</span>
+          </div>
         </div>
       </section>
     }
 
-    <!-- Once Transcript is Ready -->
-    @if (transcriptData(); as t) {
-      <section class="results">
-        <!-- Video & Transcript Header Card -->
-        <div class="video-info-card">
-          <div class="video-info-card__meta">
-            <div class="meta-tag meta-tag--video">
-              <mat-icon aria-hidden="true">play_circle_filled</mat-icon>
-              <a
-                [href]="'https://www.youtube.com/watch?v=' + t.videoId"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="video-link"
-                title="Open in YouTube"
-              >
-                Video: {{ t.videoId }}
-                <mat-icon class="external-icon" aria-hidden="true">open_in_new</mat-icon>
-              </a>
-            </div>
-
-            <div class="meta-tag">
-              <mat-icon aria-hidden="true">translate</mat-icon>
-              <span>{{ t.transcriptLanguage ? 'Language: ' + t.transcriptLanguage.toUpperCase() : 'Auto-detected captions' }}</span>
-            </div>
-
-            <div class="meta-tag">
-              <mat-icon aria-hidden="true">segment</mat-icon>
-              <span>{{ t.segments.length | number }} Timed Segments</span>
-            </div>
-
-            <div class="meta-tag">
-              <mat-icon aria-hidden="true">article</mat-icon>
-              <span>~{{ transcriptWordCount() | number }} Words</span>
-            </div>
-          </div>
-
-          <!-- Quick Action Bar -->
-          <div class="action-bar">
-            <div class="action-bar__buttons">
-              <!-- Generate / Regenerate AI Notes Button -->
-              <button
-                mat-flat-button
-                class="btn-generate-ai"
-                [disabled]="loadingNotes()"
-                (click)="onGenerateNotesClick('all')"
-                id="generate-ai-notes-btn"
-              >
-                @if (loadingNotes()) {
-                  <span class="btn-inner">
-                    <mat-spinner diameter="16" strokeWidth="2" />
-                    Generating Notes…
-                  </span>
-                } @else {
-                  <span class="btn-inner">
-                    <mat-icon aria-hidden="true">auto_awesome</mat-icon>
-                    {{ notes() ? 'Regenerate AI Notes' : 'Generate AI Notes' }}
-                  </span>
-                }
-              </button>
-
-              <!-- Section Navigation / Filter Pills -->
-              <div class="nav-pills" role="tablist">
-                @if (notes()) {
-                  <button
-                    type="button"
-                    class="nav-pill"
-                    [class.nav-pill--active]="activeTab() === 'all'"
-                    (click)="activeTab.set('all')"
-                    role="tab"
-                  >
-                    <mat-icon aria-hidden="true">grid_view</mat-icon>
-                    All Notes
-                  </button>
-                }
-
-                <button
-                  type="button"
-                  class="nav-pill"
-                  [class.nav-pill--active]="activeTab() === 'summary'"
-                  (click)="onSectionButtonClick('summary')"
-                  role="tab"
-                  id="tab-summary-btn"
-                >
-                  <mat-icon aria-hidden="true">notes</mat-icon>
-                  Summary
-                  @if (!notes()) {
-                    <span class="pill-badge">AI</span>
-                  }
-                </button>
-
-                <button
-                  type="button"
-                  class="nav-pill"
-                  [class.nav-pill--active]="activeTab() === 'keyPoints'"
-                  (click)="onSectionButtonClick('keyPoints')"
-                  role="tab"
-                  id="tab-keypoints-btn"
-                >
-                  <mat-icon aria-hidden="true">checklist</mat-icon>
-                  Key Points
-                  @if (notes()?.keyPoints?.length; as kpCount) {
-                    <span class="pill-count">{{ kpCount }}</span>
-                  } @else {
-                    <span class="pill-badge">AI</span>
-                  }
-                </button>
-
-                <button
-                  type="button"
-                  class="nav-pill"
-                  [class.nav-pill--active]="activeTab() === 'concepts'"
-                  (click)="onSectionButtonClick('concepts')"
-                  role="tab"
-                  id="tab-concepts-btn"
-                >
-                  <mat-icon aria-hidden="true">lightbulb</mat-icon>
-                  Important Concepts
-                  @if (notes()?.importantConcepts?.length; as cCount) {
-                    <span class="pill-count">{{ cCount }}</span>
-                  } @else {
-                    <span class="pill-badge">AI</span>
-                  }
-                </button>
-
-                <button
-                  type="button"
-                  class="nav-pill"
-                  [class.nav-pill--active]="activeTab() === 'actionItems'"
-                  (click)="onSectionButtonClick('actionItems')"
-                  role="tab"
-                  id="tab-actions-btn"
-                >
-                  <mat-icon aria-hidden="true">task_alt</mat-icon>
-                  Action Items
-                  @if (notes()?.actionItems?.length; as aCount) {
-                    <span class="pill-count">{{ aCount }}</span>
-                  } @else {
-                    <span class="pill-badge">AI</span>
-                  }
-                </button>
-
-                <button
-                  type="button"
-                  class="nav-pill"
-                  [class.nav-pill--active]="activeTab() === 'transcript'"
-                  (click)="onSectionButtonClick('transcript')"
-                  role="tab"
-                  id="tab-transcript-btn"
-                >
-                  <mat-icon aria-hidden="true">receipt_long</mat-icon>
-                  Full Transcript
-                </button>
-              </div>
-            </div>
+    <!-- ========================================== -->
+    <!-- STATE 2: LOADING / ANALYZING STATE         -->
+    <!-- ========================================== -->
+    @if (loading()) {
+      <section class="loading-wrapper" aria-live="polite" aria-busy="true">
+        <!-- Compact top input bar showing the active lecture URL -->
+        <div class="compact-input-bar">
+          <div class="compact-input-box">
+            <mat-icon class="compact-link-icon" aria-hidden="true">link</mat-icon>
+            <input
+              type="text"
+              [value]="videoUrl()"
+              readonly
+              class="compact-url-text"
+              aria-label="Processing YouTube URL"
+            />
+            <button type="button" class="btn-primary btn-loading" disabled>
+              <mat-spinner diameter="14" strokeWidth="2"></mat-spinner>
+              <span>Generating...</span>
+            </button>
           </div>
         </div>
 
-        <!-- AI Notes Loading State -->
-        @if (loadingNotes()) {
-          <div class="notes-loading-card">
-            <mat-spinner diameter="28" strokeWidth="3" />
-            <div class="notes-loading-card__content">
-              <strong>Analyzing Full Lecture Transcript…</strong>
-              <span>Gemini is reading through the lecture to extract the core summary, key points, concepts, and action items.</span>
+        <!-- Central Step-by-Step Analysis Card -->
+        <div class="loading-card">
+          <h2 class="loading-title">Analyzing your lecture...</h2>
+          <p class="loading-subtitle">We're converting speech and structuring academic concepts.</p>
+
+          <div class="progress-checklist">
+            <!-- Step 1: Video link verified -->
+            <div class="step-item step-item--done">
+              <mat-icon class="step-icon done" aria-hidden="true">check_circle</mat-icon>
+              <span class="step-text">Video link verified</span>
+            </div>
+
+            <!-- Step 2: Extracting transcript -->
+            <div
+              class="step-item"
+              [class.step-item--done]="loadingStage() >= 2"
+              [class.step-item--active]="loadingStage() === 2"
+            >
+              @if (loadingStage() >= 2) {
+                <mat-icon class="step-icon done" aria-hidden="true">check_circle</mat-icon>
+              } @else {
+                <div class="step-dot"></div>
+              }
+              <span class="step-text">Extracting transcript</span>
+            </div>
+
+            <!-- Step 3: Processing lecture with AI -->
+            <div
+              class="step-item"
+              [class.step-item--done]="loadingStage() >= 4"
+              [class.step-item--active]="loadingStage() === 3"
+            >
+              @if (loadingStage() >= 4) {
+                <mat-icon class="step-icon done" aria-hidden="true">check_circle</mat-icon>
+              } @else if (loadingStage() === 3) {
+                <div class="step-pulse-dot"></div>
+              } @else {
+                <div class="step-dot"></div>
+              }
+              <span class="step-text">Processing lecture with AI</span>
+            </div>
+
+            <!-- Step 4: Preparing your notes -->
+            <div
+              class="step-item"
+              [class.step-item--done]="loadingStage() >= 4"
+              [class.step-item--active]="loadingStage() === 4"
+            >
+              @if (loadingStage() >= 4) {
+                <div class="step-pulse-dot"></div>
+              } @else {
+                <div class="step-dot"></div>
+              }
+              <span class="step-text">Preparing your notes</span>
             </div>
           </div>
-        }
 
-        <!-- AI Notes Results (Summary, Key Points, Concepts, Action Items) -->
-        @if (notes(); as n) {
-          @if (activeTab() !== 'transcript') {
-            <div class="notes-layout" id="notes-results-section">
-              <!-- Summary Card -->
-              @if (activeTab() === 'all' || activeTab() === 'summary') {
-                <mat-card appearance="outlined" class="note-card note-card--summary" id="section-summary">
-                  <mat-card-header class="note-card__header">
-                    <div class="card-title-group">
-                      <mat-icon class="card-icon summary-icon" aria-hidden="true">summarize</mat-icon>
-                      <mat-card-title class="note-card__title">Lecture Summary</mat-card-title>
-                    </div>
-                    <button
-                      mat-button
-                      class="copy-btn"
-                      (click)="copySummary()"
-                      aria-label="Copy summary to clipboard"
-                    >
-                      <mat-icon aria-hidden="true">{{ copiedSummary() ? 'check' : 'content_copy' }}</mat-icon>
-                      {{ copiedSummary() ? 'Copied' : 'Copy' }}
-                    </button>
-                  </mat-card-header>
-                  <mat-card-content>
-                    <p class="note-card__body summary-text">{{ n.summary }}</p>
-                  </mat-card-content>
-                </mat-card>
-              }
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" [style.width.%]="loadingStage() * 25"></div>
+          </div>
+        </div>
+      </section>
+    }
 
-              <!-- Grid for Key Points, Concepts, Action Items -->
-              <div class="notes-grid">
-                <!-- Key Points -->
-                @if ((activeTab() === 'all' || activeTab() === 'keyPoints') && n.keyPoints.length > 0) {
-                  <mat-card appearance="outlined" class="note-card" id="section-keyPoints">
-                    <mat-card-header class="note-card__header">
-                      <div class="card-title-group">
-                        <mat-icon class="card-icon keypoints-icon" aria-hidden="true">format_list_bulleted</mat-icon>
-                        <mat-card-title class="note-card__title">Key Points</mat-card-title>
-                      </div>
-                      <span class="count-pill">{{ n.keyPoints.length }}</span>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <ul class="note-list">
-                        @for (point of n.keyPoints; track point; let idx = $index) {
-                          <li>
-                            <span class="point-number">{{ idx + 1 }}</span>
-                            <span class="point-text">{{ point }}</span>
-                          </li>
-                        }
-                      </ul>
-                    </mat-card-content>
-                  </mat-card>
-                }
+    <!-- ========================================== -->
+    <!-- STATE 3: ERROR STATE                       -->
+    <!-- ========================================== -->
+    @if (errorMessage() && !loading()) {
+      <section class="error-wrapper" role="alert">
+        <div class="error-card">
+          <div class="error-icon-badge">
+            <mat-icon class="error-icon" aria-hidden="true">warning_amber</mat-icon>
+          </div>
+          <h2 class="error-title">Couldn't process this lecture</h2>
+          <p class="error-desc">{{ errorMessage() }}</p>
+          <button type="button" class="btn-primary btn-try-again" (click)="resetToHome()">
+            ← Try Another URL
+          </button>
+        </div>
+      </section>
+    }
 
-                <!-- Important Concepts -->
-                @if ((activeTab() === 'all' || activeTab() === 'concepts') && n.importantConcepts.length > 0) {
-                  <mat-card appearance="outlined" class="note-card" id="section-concepts">
-                    <mat-card-header class="note-card__header">
-                      <div class="card-title-group">
-                        <mat-icon class="card-icon concepts-icon" aria-hidden="true">psychology</mat-icon>
-                        <mat-card-title class="note-card__title">Important Concepts</mat-card-title>
-                      </div>
-                      <span class="count-pill">{{ n.importantConcepts.length }}</span>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <dl class="concept-list">
-                        @for (item of n.importantConcepts; track item.concept) {
-                          <div class="concept-list__item">
-                            <dt>{{ item.concept }}</dt>
-                            <dd>{{ item.explanation }}</dd>
-                          </div>
-                        }
-                      </dl>
-                    </mat-card-content>
-                  </mat-card>
-                }
+    <!-- ========================================== -->
+    <!-- STATE 4: GENERATED NOTES & TRANSCRIPT TABS -->
+    <!-- ========================================== -->
+    @if (notes() && !loading()) {
+      <section class="results-wrapper">
+        <!-- Top Breadcrumb -->
+        <div class="breadcrumb">
+          <span class="breadcrumb-root" (click)="resetToHome()">EduScribe AI</span>
+          <span class="breadcrumb-separator">/</span>
+          <span class="breadcrumb-current">Generated Notes</span>
+        </div>
 
-                <!-- Action Items -->
-                @if ((activeTab() === 'all' || activeTab() === 'actionItems') && n.actionItems.length > 0) {
-                  <mat-card appearance="outlined" class="note-card" id="section-actionItems">
-                    <mat-card-header class="note-card__header">
-                      <div class="card-title-group">
-                        <mat-icon class="card-icon actions-icon" aria-hidden="true">assignment_turned_in</mat-icon>
-                        <mat-card-title class="note-card__title">Action Items & Next Steps</mat-card-title>
-                      </div>
-                      <span class="count-pill">{{ n.actionItems.length }}</span>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <ul class="note-list note-list--checked">
-                        @for (item of n.actionItems; track item) {
-                          <li>
-                            <mat-icon aria-hidden="true" class="task-check-icon">check_circle_outline</mat-icon>
-                            <span>{{ item }}</span>
-                          </li>
-                        }
-                      </ul>
-                    </mat-card-content>
-                  </mat-card>
-                }
+        <!-- Page Header -->
+        <div class="results-header">
+          <div class="results-header-left">
+            <h1 class="notes-page-title">Lecture Notes</h1>
+            <div class="video-meta-badge">
+              <div class="video-icon-box">
+                <mat-icon class="video-play-icon" aria-hidden="true">play_arrow</mat-icon>
               </div>
+              <span class="video-title">{{ lectureTitle() }}</span>
             </div>
-          }
-        }
+            <p class="meta-subtext">Transcript processed • AI-generated • Study notes compiled successfully</p>
+          </div>
+          <div class="results-header-right">
+            <button type="button" class="btn-secondary btn-new-lecture" (click)="resetToHome()">
+              + New Lecture
+            </button>
+          </div>
+        </div>
 
-        <!-- Full Transcript Viewer Section -->
-        @if (activeTab() === 'all' || activeTab() === 'transcript') {
-          <div class="transcript-section" id="section-transcript">
-            <mat-card appearance="outlined" class="transcript-card">
-              <mat-card-header class="transcript-header">
-                <div class="transcript-header__title-box">
-                  <mat-icon class="transcript-icon" aria-hidden="true">description</mat-icon>
-                  <div>
-                    <mat-card-title class="transcript-title">Full Video Transcript</mat-card-title>
-                    <span class="transcript-subtitle">
-                      Complete word-for-word lecture text ({{ t.segments.length | number }} segments)
-                    </span>
-                  </div>
+        <!-- Tabs Navigation Bar (Full Transcript is Open by Default!) -->
+        <nav class="tabs-nav-bar" role="tablist" aria-label="Lecture sections">
+          <!-- 1. FULL TRANSCRIPT (DEFAULT OPEN) -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'transcript'"
+            (click)="setActiveTab('transcript')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'transcript'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">schedule</mat-icon>
+            <span>Full Transcript</span>
+            @if (transcriptData()?.segments?.length; as segCount) {
+              <span class="tab-badge">{{ segCount }}</span>
+            }
+          </button>
+
+          <!-- 2. SUMMARY & OVERVIEW -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'summary'"
+            (click)="setActiveTab('summary')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'summary'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">notes</mat-icon>
+            <span>Summary & Overview</span>
+          </button>
+
+          <!-- 3. KEY TAKEAWAYS -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'keyPoints'"
+            (click)="setActiveTab('keyPoints')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'keyPoints'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">format_list_numbered</mat-icon>
+            <span>Key Takeaways</span>
+            @if (notes()?.keyPoints?.length; as kpCount) {
+              <span class="tab-badge">{{ kpCount }}</span>
+            }
+          </button>
+
+          <!-- 4. IMPORTANT CONCEPTS -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'concepts'"
+            (click)="setActiveTab('concepts')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'concepts'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">psychology</mat-icon>
+            <span>Important Concepts</span>
+            @if (notes()?.importantConcepts?.length; as cCount) {
+              <span class="tab-badge">{{ cCount }}</span>
+            }
+          </button>
+
+          <!-- 5. QUICK REVIEW & ACTIONS -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'actionItems'"
+            (click)="setActiveTab('actionItems')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'actionItems'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">assignment_turned_in</mat-icon>
+            <span>Quick Review & Actions</span>
+          </button>
+
+          <!-- 6. ALL NOTES -->
+          <button
+            type="button"
+            class="tab-btn"
+            [class.tab-btn--active]="activeTab() === 'all'"
+            (click)="setActiveTab('all')"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'all'"
+          >
+            <mat-icon class="tab-icon" aria-hidden="true">grid_view</mat-icon>
+            <span>All Notes</span>
+          </button>
+        </nav>
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 1: FULL TRANSCRIPT (DEFAULT)   -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'transcript') {
+          <div class="tab-content-panel">
+            <div class="transcript-box">
+              <div class="transcript-header-bar">
+                <div class="transcript-meta-info">
+                  <h2 class="box-heading">FULL VIDEO TRANSCRIPT WITH TIMESTAMPS</h2>
+                  <span class="transcript-sub-info">
+                    {{ transcriptData()?.segments?.length || 0 }} segments • ~{{ transcriptWordCount() }} words
+                  </span>
                 </div>
 
-                <div class="transcript-controls">
-                  <!-- Search within Transcript -->
-                  <div class="transcript-search">
+                <div class="transcript-actions-bar">
+                  <!-- In-Transcript Search -->
+                  <div class="transcript-search-wrap">
                     <mat-icon class="search-icon" aria-hidden="true">search</mat-icon>
                     <input
                       type="text"
-                      placeholder="Search within transcript…"
+                      placeholder="Search within transcript..."
                       [(ngModel)]="transcriptSearch"
                       class="search-input"
                       aria-label="Search within transcript"
@@ -378,98 +328,305 @@
                     @if (transcriptSearch().length > 0) {
                       <button
                         type="button"
-                        class="clear-search-btn"
+                        class="btn-clear-search"
                         (click)="transcriptSearch.set('')"
-                        aria-label="Clear search"
+                        aria-label="Clear transcript search"
                       >
                         <mat-icon aria-hidden="true">close</mat-icon>
                       </button>
                     }
                   </div>
 
-                  <!-- View Mode Toggle -->
-                  <div class="view-mode-toggle" role="group" aria-label="Transcript view mode">
+                  <!-- View Mode Switcher -->
+                  <div class="mode-toggle-group">
                     <button
                       type="button"
-                      class="mode-btn"
-                      [class.mode-btn--active]="transcriptViewMode() === 'segments'"
+                      class="toggle-mode-btn"
+                      [class.toggle-mode-btn--active]="transcriptViewMode() === 'segments'"
                       (click)="transcriptViewMode.set('segments')"
-                      title="Timestamped Segments"
                     >
                       <mat-icon aria-hidden="true">schedule</mat-icon>
-                      Timestamps
+                      <span>Timestamps</span>
                     </button>
                     <button
                       type="button"
-                      class="mode-btn"
-                      [class.mode-btn--active]="transcriptViewMode() === 'continuous'"
+                      class="toggle-mode-btn"
+                      [class.toggle-mode-btn--active]="transcriptViewMode() === 'continuous'"
                       (click)="transcriptViewMode.set('continuous')"
-                      title="Continuous Reading"
                     >
                       <mat-icon aria-hidden="true">menu_book</mat-icon>
-                      Text
+                      <span>Text</span>
                     </button>
                   </div>
 
-                  <!-- Copy Full Transcript Button -->
+                  <!-- Copy Full Transcript -->
                   <button
-                    mat-stroked-button
-                    class="transcript-copy-btn"
+                    type="button"
+                    class="btn-secondary btn-copy-transcript"
                     (click)="copyTranscript()"
-                    aria-label="Copy entire transcript"
                   >
-                    <mat-icon aria-hidden="true">{{ copiedTranscript() ? 'done' : 'content_copy' }}</mat-icon>
-                    {{ copiedTranscript() ? 'Copied' : 'Copy All' }}
+                    <mat-icon aria-hidden="true">{{ copiedTranscript() ? 'check' : 'content_copy' }}</mat-icon>
+                    <span>{{ copiedTranscript() ? 'Copied' : 'Copy All' }}</span>
                   </button>
                 </div>
-              </mat-card-header>
+              </div>
 
-              <mat-card-content class="transcript-body">
-                <!-- Timestamped Segments Mode -->
-                @if (transcriptViewMode() === 'segments') {
-                  <div class="segments-container" role="list" aria-label="Transcript segments">
-                    @for (seg of filteredSegments(); track seg.offset; let i = $index) {
-                      <div class="segment-row" role="listitem">
-                        <a
-                          [href]="getYoutubeTimestampUrl(seg.offset)"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="segment-timestamp"
-                          title="Open YouTube video at this timestamp"
-                        >
-                          <mat-icon class="timestamp-icon" aria-hidden="true">play_arrow</mat-icon>
-                          <span>{{ formatTimestamp(seg.offset) }}</span>
-                        </a>
-                        <p class="segment-text">{{ seg.text }}</p>
-                      </div>
-                    }
+              <!-- Timestamped Segments Mode -->
+              @if (transcriptViewMode() === 'segments') {
+                <div class="segments-list">
+                  @for (seg of filteredSegments(); track seg.offset; let i = $index) {
+                    <div class="segment-item">
+                      <a
+                        [href]="getYoutubeTimestampUrl(seg.offset)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="timestamp-pill"
+                        title="Click to play video at this timestamp"
+                      >
+                        <mat-icon class="ts-icon" aria-hidden="true">play_arrow</mat-icon>
+                        <span>{{ formatTimestamp(seg.offset) }}</span>
+                      </a>
+                      <p class="segment-text">{{ seg.text }}</p>
+                    </div>
+                  }
 
-                    @if (filteredSegments().length === 0) {
-                      <div class="transcript-empty-search">
-                        <mat-icon aria-hidden="true">search_off</mat-icon>
-                        <p>No matching lines found for "{{ transcriptSearch() }}".</p>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <!-- Continuous Reading Mode -->
-                  <div class="continuous-text-container">
-                    <p class="continuous-text">{{ t.fullText }}</p>
+                  @if (filteredSegments().length === 0) {
+                    <div class="empty-segments-state">
+                      <mat-icon aria-hidden="true">search_off</mat-icon>
+                      <p>No matching transcript lines found for "{{ transcriptSearch() }}".</p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <!-- Continuous Text Mode -->
+                <div class="continuous-text-box">
+                  <p class="continuous-text-body">{{ transcriptData()?.fullText }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 2: SUMMARY & OVERVIEW          -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'summary') {
+          <div class="tab-content-panel">
+            <div class="note-box note-box--standalone">
+              <div class="box-header-row">
+                <h2 class="box-heading">OVERVIEW & SUMMARY</h2>
+                <button type="button" class="btn-secondary btn-sm" (click)="copySummary()">
+                  <mat-icon aria-hidden="true">{{ copiedSummary() ? 'check' : 'content_copy' }}</mat-icon>
+                  <span>{{ copiedSummary() ? 'Copied' : 'Copy Summary' }}</span>
+                </button>
+              </div>
+              <p class="summary-paragraph">{{ notes()?.summary }}</p>
+            </div>
+          </div>
+        }
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 3: KEY TAKEAWAYS               -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'keyPoints') {
+          <div class="tab-content-panel">
+            <div class="note-box note-box--standalone">
+              <h2 class="box-heading">CORE NORMALIZATION STEPS & TAKEAWAYS</h2>
+              <div class="steps-list">
+                @for (point of notes()?.keyPoints; track point; let i = $index) {
+                  <div class="step-card">
+                    <span class="step-index">{{ i + 1 }}.</span>
+                    <p class="step-content">{{ point }}</p>
                   </div>
                 }
-              </mat-card-content>
-            </mat-card>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 4: IMPORTANT CONCEPTS          -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'concepts') {
+          <div class="tab-content-panel">
+            <div class="note-box note-box--standalone">
+              <h2 class="box-heading">IMPORTANT CONCEPTS</h2>
+              <p class="section-hint">Click on any concept to view its detailed academic explanation:</p>
+              <div class="concept-chips">
+                @for (item of notes()?.importantConcepts; track item.concept) {
+                  <button
+                    type="button"
+                    class="concept-chip"
+                    [class.concept-chip--selected]="selectedConcept()?.concept === item.concept"
+                    (click)="selectConcept(item)"
+                    [matTooltip]="item.explanation"
+                  >
+                    {{ item.concept }}
+                  </button>
+                }
+              </div>
+
+              @if (selectedConcept(); as selected) {
+                <div class="concept-detail-box">
+                  <div class="concept-detail-header">
+                    <mat-icon class="concept-detail-icon" aria-hidden="true">lightbulb</mat-icon>
+                    <strong>{{ selected.concept }}</strong>
+                  </div>
+                  <p class="concept-detail-text">{{ selected.explanation }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 5: QUICK REVIEW & ACTIONS      -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'actionItems') {
+          <div class="tab-content-panel">
+            <div class="note-box note-box--standalone">
+              <h2 class="box-heading">QUICK REVIEW & ACTION ITEMS</h2>
+
+              <div class="review-section">
+                <h3 class="review-subheading">KEY TAKEAWAYS</h3>
+                <ul class="takeaways-list">
+                  @for (point of notes()?.keyPoints; track point) {
+                    <li>
+                      <span class="bullet">•</span>
+                      <span>{{ point }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+
+              @if (notes()?.actionItems?.length; as actionCount) {
+                <div class="review-section">
+                  <h3 class="review-subheading">ACTION ITEMS</h3>
+                  <ul class="action-items-list">
+                    @for (item of notes()?.actionItems; track item) {
+                      <li>
+                        <mat-icon class="action-check-icon" aria-hidden="true">check_circle_outline</mat-icon>
+                        <span>{{ item }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+
+              <button
+                type="button"
+                class="btn-primary btn-copy"
+                (click)="copyAllNotes()"
+              >
+                <mat-icon aria-hidden="true">{{ copiedNotes() ? 'check' : 'content_copy' }}</mat-icon>
+                <span>{{ copiedNotes() ? 'Copied Full Notes!' : 'Copy Full Notes' }}</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ========================================== -->
+        <!-- TAB CONTENT 6: ALL NOTES (2-COLUMN GRID)   -->
+        <!-- ========================================== -->
+        @if (activeTab() === 'all') {
+          <div class="notes-grid-container">
+            <!-- Left Column (Primary Content) -->
+            <div class="notes-main-column">
+              <!-- 1. OVERVIEW & SUMMARY -->
+              <div class="note-box">
+                <h2 class="box-heading">OVERVIEW & SUMMARY</h2>
+                <p class="summary-paragraph">{{ notes()?.summary }}</p>
+              </div>
+
+              <!-- 2. CORE TAKEAWAYS / NUMBERED STEPS -->
+              <div class="note-box">
+                <h2 class="box-heading">CORE NORMALIZATION STEPS & TAKEAWAYS</h2>
+                <div class="steps-list">
+                  @for (point of notes()?.keyPoints; track point; let i = $index) {
+                    <div class="step-card">
+                      <span class="step-index">{{ i + 1 }}.</span>
+                      <p class="step-content">{{ point }}</p>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- 3. IMPORTANT CONCEPTS -->
+              <div class="note-box">
+                <h2 class="box-heading">IMPORTANT CONCEPTS</h2>
+                <div class="concept-chips">
+                  @for (item of notes()?.importantConcepts; track item.concept) {
+                    <button
+                      type="button"
+                      class="concept-chip"
+                      [class.concept-chip--selected]="selectedConcept()?.concept === item.concept"
+                      (click)="selectConcept(item)"
+                      [matTooltip]="item.explanation"
+                    >
+                      {{ item.concept }}
+                    </button>
+                  }
+                </div>
+
+                @if (selectedConcept(); as selected) {
+                  <div class="concept-detail-box">
+                    <div class="concept-detail-header">
+                      <mat-icon class="concept-detail-icon" aria-hidden="true">lightbulb</mat-icon>
+                      <strong>{{ selected.concept }}</strong>
+                    </div>
+                    <p class="concept-detail-text">{{ selected.explanation }}</p>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Right Sidebar Column (Quick Review & Copy) -->
+            <aside class="notes-sidebar-column">
+              <div class="sidebar-box">
+                <h2 class="box-heading">QUICK REVIEW</h2>
+
+                <!-- Key Takeaways Subsection -->
+                <div class="review-section">
+                  <h3 class="review-subheading">KEY TAKEAWAYS</h3>
+                  <ul class="takeaways-list">
+                    @for (point of notes()?.keyPoints; track point) {
+                      <li>
+                        <span class="bullet">•</span>
+                        <span>{{ point }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+
+                <!-- Action Items Subsection -->
+                @if (notes()?.actionItems?.length; as actionCount) {
+                  <div class="review-section">
+                    <h3 class="review-subheading">ACTION ITEMS</h3>
+                    <ul class="action-items-list">
+                      @for (item of notes()?.actionItems; track item) {
+                        <li>
+                          <mat-icon class="action-check-icon" aria-hidden="true">check_circle_outline</mat-icon>
+                          <span>{{ item }}</span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                <!-- Copy Notes Button -->
+                <button
+                  type="button"
+                  class="btn-primary btn-copy"
+                  (click)="copyAllNotes()"
+                >
+                  <mat-icon aria-hidden="true">{{ copiedNotes() ? 'check' : 'content_copy' }}</mat-icon>
+                  <span>{{ copiedNotes() ? 'Copied Notes!' : 'Copy Notes' }}</span>
+                </button>
+              </div>
+            </aside>
           </div>
         }
       </section>
-    }
-
-    <!-- Empty State -->
-    @if (showEmptyState()) {
-      <div class="status-pill status-pill--empty">
-        <mat-icon aria-hidden="true">info_outline</mat-icon>
-        No captions could be retrieved for that video. Make sure the video is public and has captions.
-      </div>
     }
   </main>
 </div>

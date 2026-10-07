@@ -58,6 +58,8 @@ export interface GenerateNotesResponse {
   videoId: string | null;
   transcriptLanguage: string | null;
   notes: Notes;
+  fullText?: string;
+  segments?: TranscriptSegment[];
 }
 
 /**

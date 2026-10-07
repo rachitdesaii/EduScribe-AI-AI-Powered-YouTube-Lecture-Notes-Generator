@@ -5,16 +5,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ApiService } from '../../core/services/api';
-import { GenerateNotesErrorResponse, Notes, TranscriptResponse, TranscriptSegment } from '../../core/models/note.model';
+import { GenerateNotesErrorResponse, ImportantConcept, Notes, TranscriptResponse, TranscriptSegment } from '../../core/models/note.model';
 
-export type NotesTab = 'all' | 'summary' | 'keyPoints' | 'concepts' | 'actionItems' | 'transcript';
+export type NotesTab = 'transcript' | 'summary' | 'keyPoints' | 'concepts' | 'actionItems' | 'all';
 
 @Component({
   selector: 'app-home',
@@ -24,9 +22,7 @@ export type NotesTab = 'all' | 'summary' | 'keyPoints' | 'concepts' | 'actionIte
     FormsModule,
     MatButtonModule,
     MatCardModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],
@@ -36,32 +32,29 @@ export type NotesTab = 'all' | 'summary' | 'keyPoints' | 'concepts' | 'actionIte
 export class HomeComponent {
   private readonly api = inject(ApiService);
 
-  /** The YouTube URL typed into the input field. */
+  /** The YouTube URL input by the user. */
   readonly videoUrl = signal('');
 
-  /** Raw transcript data returned from the backend. */
-  readonly transcriptData = signal<TranscriptResponse | null>(null);
+  /** Active loading state during generation pipeline. */
+  readonly loading = signal(false);
 
-  /** Structured notes returned from the backend Gemini summarization. */
-  readonly notes = signal<Notes | null>(null);
+  /** Active stage for the step-by-step progress animation (1, 2, 3, or 4). */
+  readonly loadingStage = signal<1 | 2 | 3 | 4>(1);
 
-  /** True while transcript retrieval is in flight. */
-  readonly loadingTranscript = signal(false);
-
-  /** True while AI note generation is in flight. */
-  readonly loadingNotes = signal(false);
-
-  /** Backward-compatible combined loading signal. */
-  readonly loading = computed(() => this.loadingTranscript() || this.loadingNotes());
-
-  /** True once a search / fetch has been initiated. */
-  readonly hasSearched = signal(false);
-
-  /** Message for the inline error alert, or null when there's no error. */
+  /** Error message string or null if no error. */
   readonly errorMessage = signal<string | null>(null);
 
-  /** Active display view / tab. */
-  readonly activeTab = signal<NotesTab>('all');
+  /** Extracted video ID from current request. */
+  readonly videoId = signal<string | null>(null);
+
+  /** Generated notes data from Gemini AI. */
+  readonly notes = signal<Notes | null>(null);
+
+  /** Full transcript text and timed segments. */
+  readonly transcriptData = signal<TranscriptResponse | null>(null);
+
+  /** Active tab view - DEFAULTS TO 'transcript' with timestamps open! */
+  readonly activeTab = signal<NotesTab>('transcript');
 
   /** Filter query to search within transcript segments. */
   readonly transcriptSearch = signal('');
@@ -69,36 +62,22 @@ export class HomeComponent {
   /** Display mode for the transcript: timestamped segments or continuous text. */
   readonly transcriptViewMode = signal<'segments' | 'continuous'>('segments');
 
-  /** Feedback indicator when transcript is copied. */
-  readonly copiedTranscript = signal(false);
+  /** Feedback indicator when full notes are copied. */
+  readonly copiedNotes = signal(false);
 
   /** Feedback indicator when summary is copied. */
   readonly copiedSummary = signal(false);
 
-  /** True right after a successful notes generation, while results are showing. */
-  readonly showSuccess = computed(
-    () => !this.loadingNotes() && !this.errorMessage() && this.hasSearched() && this.notes() !== null
-  );
+  /** Feedback indicator when transcript is copied. */
+  readonly copiedTranscript = signal(false);
 
-  /** True when a search completed with no error but neither transcript nor notes came back. */
-  readonly showEmptyState = computed(
-    () =>
-      !this.loadingTranscript() &&
-      !this.loadingNotes() &&
-      !this.errorMessage() &&
-      this.hasSearched() &&
-      this.transcriptData() === null &&
-      this.notes() === null
-  );
+  /** Active concept selected by user to view details. */
+  readonly selectedConcept = signal<ImportantConcept | null>(null);
 
-  /** Estimated word count of the full transcript text. */
-  readonly transcriptWordCount = computed(() => {
-    const text = this.transcriptData()?.fullText;
-    if (!text) return 0;
-    return text.trim().split(/\s+/).filter(Boolean).length;
-  });
+  /** Whether the user has entered a non-empty URL string. */
+  readonly isInputValid = computed(() => this.videoUrl().trim().length > 0);
 
-  /** Filtered transcript segments based on active search keyword. */
+  /** Filtered transcript segments based on search query. */
   readonly filteredSegments = computed(() => {
     const data = this.transcriptData();
     if (!data?.segments) return [];
@@ -107,123 +86,151 @@ export class HomeComponent {
     return data.segments.filter((seg) => seg.text.toLowerCase().includes(query));
   });
 
-  get isGenerateDisabled(): boolean {
-    return this.loadingTranscript() || this.videoUrl().trim().length === 0;
-  }
+  /** Estimated word count of the transcript. */
+  readonly transcriptWordCount = computed(() => {
+    const text = this.transcriptData()?.fullText;
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  });
 
-  get isGenerateNotesDisabled(): boolean {
-    return this.loadingNotes() || !this.transcriptData();
-  }
+  /** Lecture Title derived from notes concepts or video ID. */
+  readonly lectureTitle = computed(() => {
+    const n = this.notes();
+    if (!n) return 'Lecture Study Notes';
 
-  /**
-   * Primary action: Fetches the full video transcript first.
-   */
-  onGenerateClick(): void {
-    const trimmedUrl = this.videoUrl().trim();
-    if (!trimmedUrl || this.loadingTranscript()) {
-      return;
+    if (n.importantConcepts && n.importantConcepts.length > 0) {
+      const topConcept = n.importantConcepts[0].concept;
+      return `${topConcept} — Complete Guide`;
     }
 
-    this.loadingTranscript.set(true);
-    this.errorMessage.set(null);
-    this.transcriptData.set(null);
-    this.notes.set(null);
-    this.activeTab.set('all');
+    const id = this.videoId();
+    return id ? `Lecture Notes (Video ${id})` : 'Lecture Study Notes';
+  });
 
-    this.api.fetchTranscript(trimmedUrl).subscribe({
+  /**
+   * Triggers the full AI Note generation pipeline with animated progress steps.
+   */
+  onGenerateNotes(): void {
+    const trimmed = this.videoUrl().trim();
+    if (!trimmed || this.loading()) return;
+
+    this.loading.set(true);
+    this.errorMessage.set(null);
+    this.notes.set(null);
+    this.transcriptData.set(null);
+    this.loadingStage.set(1);
+    this.activeTab.set('transcript'); // Default tab is open on transcript!
+
+    // Animate to Stage 2 (Transcript extraction)
+    setTimeout(() => {
+      if (this.loading()) this.loadingStage.set(2);
+    }, 600);
+
+    // Animate to Stage 3 (AI Processing)
+    setTimeout(() => {
+      if (this.loading()) this.loadingStage.set(3);
+    }, 1400);
+
+    this.api.generateNotes(trimmed).subscribe({
       next: (response) => {
-        this.transcriptData.set(response);
-        this.loadingTranscript.set(false);
-        this.hasSearched.set(true);
+        this.loadingStage.set(4);
+        setTimeout(() => {
+          const vid = response.videoId || this.extractVideoIdFallback(trimmed);
+          this.videoId.set(vid);
+          this.notes.set(response.notes);
+
+          if (response.segments && response.segments.length > 0) {
+            this.transcriptData.set({
+              success: true,
+              videoId: vid || '',
+              transcriptLanguage: response.transcriptLanguage,
+              fullText: response.fullText || '',
+              segments: response.segments,
+            });
+          }
+
+          this.loading.set(false);
+          this.activeTab.set('transcript'); // By default, full transcript with timestamps is open!
+        }, 500);
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Failed to fetch transcript', err);
-        this.loadingTranscript.set(false);
-        this.hasSearched.set(true);
-        this.transcriptData.set(null);
+        console.error('Note generation failed', err);
+        this.loading.set(false);
         this.errorMessage.set(this.extractErrorMessage(err));
       },
     });
   }
 
   /**
-   * Secondary action: Generates AI notes from the already loaded transcript.
-   * If targetTab is provided, switches to that tab once notes are ready.
+   * Switches the active tab.
    */
-  onGenerateNotesClick(targetTab: NotesTab = 'all'): void {
-    const transcript = this.transcriptData();
-    if (!transcript || this.loadingNotes()) {
-      return;
-    }
-
-    this.loadingNotes.set(true);
-    this.errorMessage.set(null);
-
-    this.api
-      .generateNotes({
-        transcript: transcript.fullText,
-        videoId: transcript.videoId,
-        transcriptLanguage: transcript.transcriptLanguage,
-      })
-      .subscribe({
-        next: (response) => {
-          this.notes.set(response.notes ?? null);
-          this.loadingNotes.set(false);
-          this.activeTab.set(targetTab);
-          this.scrollToSection(targetTab);
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('Failed to generate notes', err);
-          this.loadingNotes.set(false);
-          this.errorMessage.set(this.extractErrorMessage(err));
-        },
-      });
+  setActiveTab(tab: NotesTab): void {
+    this.activeTab.set(tab);
   }
 
   /**
-   * Handles clicking on section buttons like Summary, Key Points, etc.
-   * If notes already exist, switches to that view.
-   * If notes do not yet exist, automatically triggers note generation and opens that view!
+   * Resets the entire view back to the initial state (State 1).
    */
-  onSectionButtonClick(tab: NotesTab): void {
-    if (tab === 'transcript') {
-      this.activeTab.set('transcript');
-      this.scrollToSection('transcript');
-      return;
-    }
-
-    if (!this.notes()) {
-      // Notes have not been generated yet -> generate them now and show this section!
-      this.onGenerateNotesClick(tab);
-    } else {
-      this.activeTab.set(tab);
-      this.scrollToSection(tab);
-    }
-  }
-
-  onInputKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Enter' && !this.isGenerateDisabled) {
-      this.onGenerateClick();
-    }
-  }
-
-  /** Dismisses the error alert. */
-  dismissError(): void {
+  resetToHome(): void {
     this.errorMessage.set(null);
+    this.notes.set(null);
+    this.transcriptData.set(null);
+    this.loading.set(false);
+    this.loadingStage.set(1);
+    this.videoUrl.set('');
+    this.selectedConcept.set(null);
+    this.activeTab.set('transcript');
   }
 
-  /** Copies full transcript to clipboard. */
-  copyTranscript(): void {
-    const text = this.transcriptData()?.fullText;
-    if (!text) return;
+  /**
+   * Keydown handler to submit on Enter.
+   */
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && this.isInputValid() && !this.loading()) {
+      this.onGenerateNotes();
+    }
+  }
 
-    navigator.clipboard?.writeText(text).then(() => {
-      this.copiedTranscript.set(true);
-      setTimeout(() => this.copiedTranscript.set(false), 2000);
+  /**
+   * Selects a concept chip to view its full explanation.
+   */
+  selectConcept(item: ImportantConcept): void {
+    if (this.selectedConcept()?.concept === item.concept) {
+      this.selectedConcept.set(null);
+    } else {
+      this.selectedConcept.set(item);
+    }
+  }
+
+  /**
+   * Copies formatted notes to clipboard with user feedback.
+   */
+  copyAllNotes(): void {
+    const n = this.notes();
+    if (!n) return;
+
+    const sections: string[] = [
+      `# ${this.lectureTitle()}`,
+      `\n## OVERVIEW & SUMMARY\n${n.summary}`,
+      `\n## CORE TAKEAWAYS & KEY POINTS`,
+      ...n.keyPoints.map((point, i) => `${i + 1}. ${point}`),
+      `\n## IMPORTANT CONCEPTS`,
+      ...n.importantConcepts.map((item) => `- **${item.concept}**: ${item.explanation}`),
+      `\n## ACTION ITEMS`,
+      ...n.actionItems.map((item) => `- [ ] ${item}`),
+    ];
+
+    const fullText = sections.join('\n');
+
+    navigator.clipboard?.writeText(fullText).then(() => {
+      this.copiedNotes.set(true);
+      setTimeout(() => this.copiedNotes.set(false), 2000);
     });
   }
 
-  /** Copies summary to clipboard. */
+  /**
+   * Copies summary to clipboard.
+   */
   copySummary(): void {
     const summary = this.notes()?.summary;
     if (!summary) return;
@@ -234,7 +241,22 @@ export class HomeComponent {
     });
   }
 
-  /** Formats offset into readable HH:MM:SS or MM:SS */
+  /**
+   * Copies raw full transcript to clipboard.
+   */
+  copyTranscript(): void {
+    const text = this.transcriptData()?.fullText;
+    if (!text) return;
+
+    navigator.clipboard?.writeText(text).then(() => {
+      this.copiedTranscript.set(true);
+      setTimeout(() => this.copiedTranscript.set(false), 2000);
+    });
+  }
+
+  /**
+   * Formats millisecond offset into HH:MM:SS or MM:SS timestamp string.
+   */
   formatTimestamp(offset: number): string {
     const allSegments = this.transcriptData()?.segments || [];
     const isMs = allSegments.length > 0 && allSegments[allSegments.length - 1].offset > 30000;
@@ -251,9 +273,11 @@ export class HomeComponent {
     return `${pad(minutes)}:${pad(seconds)}`;
   }
 
-  /** Generates direct link to video at timestamp offset */
+  /**
+   * Generates direct link to video at timestamp offset.
+   */
   getYoutubeTimestampUrl(offset: number): string {
-    const videoId = this.transcriptData()?.videoId;
+    const videoId = this.videoId() || this.transcriptData()?.videoId;
     if (!videoId) return '#';
     const allSegments = this.transcriptData()?.segments || [];
     const isMs = allSegments.length > 0 && allSegments[allSegments.length - 1].offset > 30000;
@@ -261,24 +285,26 @@ export class HomeComponent {
     return `https://www.youtube.com/watch?v=${videoId}&t=${totalSeconds}s`;
   }
 
-  private scrollToSection(sectionId: string): void {
-    setTimeout(() => {
-      const el = document.getElementById(`section-${sectionId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
-  }
-
   /**
-   * Reads the backend's structured error body when present, falling back
-   * to a generic message.
+   * Extracts clean error message from backend error response.
    */
   private extractErrorMessage(err: HttpErrorResponse): string {
     const body = err.error as GenerateNotesErrorResponse | undefined;
     if (body && typeof body === 'object' && body.error?.message) {
       return body.error.message;
     }
-    return 'Something went wrong while processing the video. Please check the URL and try again.';
+    return 'Transcript unavailable. If a transcript isn\'t provided by the creator or auto-generated, we cannot currently structure notes. Please try another URL.';
+  }
+
+  /**
+   * Fallback extractor for YouTube Video ID.
+   */
+  private extractVideoIdFallback(url: string): string | null {
+    try {
+      const match = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      return match ? match[1] : null;
+    } catch {
+      return null;
+    }
   }
 }

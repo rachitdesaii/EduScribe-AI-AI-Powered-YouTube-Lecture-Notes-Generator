@@ -133,6 +133,8 @@ export function createGenerateNotesHandler(deps = {}) {
       videoId: result.data.videoId,
       transcriptLanguage: result.data.transcriptLanguage,
       notes: result.data.notes,
+      fullText: result.data.fullText,
+      segments: result.data.segments,
     });
   };
 }

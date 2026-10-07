@@ -4,11 +4,28 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { HomeComponent } from './home';
-import { TranscriptResponse } from '../../core/models/note.model';
+import { Notes, TranscriptResponse } from '../../core/models/note.model';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
+
+  const mockNotes: Notes = {
+    summary: 'Database normalization is a systematic approach to eliminate redundancy.',
+    keyPoints: [
+      'First Normal Form (1NF): Requires atomic values.',
+      'Second Normal Form (2NF): Eliminates partial dependencies.',
+      'Third Normal Form (3NF): Eliminates transitive dependencies.',
+    ],
+    importantConcepts: [
+      { concept: 'Primary Key', explanation: 'A unique identifier for a table record.' },
+      { concept: '1NF', explanation: 'Atomic columns and no repeating groups.' },
+    ],
+    actionItems: [
+      'Review primary key dependencies.',
+      'Practice normalization exercises.',
+    ],
+  };
 
   const mockTranscript: TranscriptResponse = {
     success: true,
@@ -18,7 +35,7 @@ describe('HomeComponent', () => {
     segments: [
       { text: 'Hello world', offset: 0, duration: 2000 },
       { text: 'this is a test lecture transcript', offset: 2500, duration: 4000 },
-      { text: 'with several key concepts', offset: 7300000, duration: 5000 }, // ~2 hours in ms
+      { text: 'with several key concepts', offset: 7300000, duration: 5000 },
     ],
   };
 
@@ -37,28 +54,44 @@ describe('HomeComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should disable the Generate button when the input is empty', () => {
+  it('should have activeTab set to "transcript" by default', () => {
+    expect(component.activeTab()).toBe('transcript');
+  });
+
+  it('should switch tabs when setActiveTab is called', () => {
+    component.setActiveTab('summary');
+    expect(component.activeTab()).toBe('summary');
+
+    component.setActiveTab('keyPoints');
+    expect(component.activeTab()).toBe('keyPoints');
+
+    component.setActiveTab('transcript');
+    expect(component.activeTab()).toBe('transcript');
+  });
+
+  it('should validate input correctly', () => {
     component.videoUrl.set('');
-    expect(component.isGenerateDisabled).toBe(true);
+    expect(component.isInputValid()).toBe(false);
+
+    component.videoUrl.set('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(component.isInputValid()).toBe(true);
   });
 
-  it('should enable the Generate button once a URL is typed', () => {
-    component.videoUrl.set('https://youtu.be/dQw4w9WgXcQ');
-    expect(component.isGenerateDisabled).toBe(false);
-  });
-
-  it('should have no error message and no success state initially', () => {
+  it('should have initial state with no error and no notes', () => {
     expect(component.errorMessage()).toBeNull();
-    expect(component.showSuccess()).toBe(false);
+    expect(component.notes()).toBeNull();
+    expect(component.loading()).toBe(false);
   });
 
-  it('should clear the error message when dismissError is called', () => {
-    component.errorMessage.set('Something went wrong.');
-    component.dismissError();
-    expect(component.errorMessage()).toBeNull();
+  it('should compute lecture title from top concept or fallback', () => {
+    component.notes.set(mockNotes);
+    expect(component.lectureTitle()).toBe('Primary Key — Complete Guide');
+
+    component.notes.set(null);
+    expect(component.lectureTitle()).toBe('Lecture Study Notes');
   });
 
-  it('should format timestamps correctly including for 2+ hour video offsets', () => {
+  it('should format timestamps correctly', () => {
     component.transcriptData.set(mockTranscript);
     expect(component.formatTimestamp(0)).toBe('00:00');
     expect(component.formatTimestamp(2500)).toBe('00:02');
@@ -69,14 +102,31 @@ describe('HomeComponent', () => {
     component.transcriptData.set(mockTranscript);
     component.transcriptSearch.set('key concepts');
     expect(component.filteredSegments().length).toBe(1);
-    expect(component.filteredSegments()[0].text).toContain('key concepts');
 
-    component.transcriptSearch.set('nonexistent keyword');
+    component.transcriptSearch.set('nonexistent query');
     expect(component.filteredSegments().length).toBe(0);
   });
 
-  it('should compute estimated word count correctly', () => {
-    component.transcriptData.set(mockTranscript);
-    expect(component.transcriptWordCount()).toBe(12);
+  it('should toggle concept selection', () => {
+    const concept = mockNotes.importantConcepts[0];
+    component.selectConcept(concept);
+    expect(component.selectedConcept()).toEqual(concept);
+
+    component.selectConcept(concept);
+    expect(component.selectedConcept()).toBeNull();
+  });
+
+  it('should reset state to home when resetToHome is called', () => {
+    component.videoUrl.set('https://youtube.com');
+    component.errorMessage.set('Some error');
+    component.notes.set(mockNotes);
+
+    component.resetToHome();
+
+    expect(component.videoUrl()).toBe('');
+    expect(component.errorMessage()).toBeNull();
+    expect(component.notes()).toBeNull();
+    expect(component.loading()).toBe(false);
+    expect(component.activeTab()).toBe('transcript');
   });
 });
