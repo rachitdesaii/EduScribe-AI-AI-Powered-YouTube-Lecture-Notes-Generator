@@ -128,14 +128,19 @@ export function createGenerateNotesHandler(deps = {}) {
       });
     }
 
-    return res.status(200).json({
+    const responsePayload = {
       success: true,
       videoId: result.data.videoId,
       transcriptLanguage: result.data.transcriptLanguage,
       notes: result.data.notes,
-      fullText: result.data.fullText,
-      segments: result.data.segments,
-    });
+    };
+    if (result.data.fullText !== undefined) {
+      responsePayload.fullText = result.data.fullText;
+    }
+    if (result.data.segments !== undefined) {
+      responsePayload.segments = result.data.segments;
+    }
+    return res.status(200).json(responsePayload);
   };
 }
 

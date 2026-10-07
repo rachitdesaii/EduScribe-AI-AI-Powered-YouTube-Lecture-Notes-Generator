@@ -4,11 +4,22 @@
     <div class="header-container">
       <div class="brand" (click)="resetToHome()" role="button" tabindex="0" (keydown.enter)="resetToHome()">
         <div class="brand-logo">
-          <mat-icon class="brand-icon" aria-hidden="true">auto_stories</mat-icon>
+          <svg class="brand-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="36" height="36" rx="9" fill="#4f46e5"/>
+            <path d="M10 12h16M10 17h12M10 22h14" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="27" cy="22" r="4" fill="#a5b4fc"/>
+            <path d="M25.5 22l1.2 1.2 2.3-2.3" stroke="#4f46e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <span class="brand-title">EduScribe AI</span>
+        <div class="brand-text-group">
+          <span class="brand-title">EduScribe AI</span>
+          <span class="brand-sub">Lecture Notes Generator</span>
+        </div>
       </div>
-      <div class="header-tagline">AI LECTURE NOTE GENERATOR</div>
+      <div class="header-tagline">
+        <mat-icon class="tagline-icon" aria-hidden="true">auto_awesome</mat-icon>
+        AI POWERED
+      </div>
     </div>
   </header>
 
@@ -212,6 +223,19 @@
 
         <!-- Tabs Navigation Bar (Full Transcript is Open by Default!) -->
         <nav class="tabs-nav-bar" role="tablist" aria-label="Lecture sections">
+
+          <!-- Tab Bar Logo -->
+          <div class="tab-bar-logo" aria-hidden="true">
+            <svg class="tab-bar-svg" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="28" height="28" rx="7" fill="#4f46e5"/>
+              <path d="M7 9h14M7 13h10M7 17h12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="20" cy="17" r="3.5" fill="#a5b4fc"/>
+              <path d="M18.8 17l1 1 1.8-1.8" stroke="#4f46e5" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="tab-bar-brand">EduScribe AI</span>
+          </div>
+          <div class="tab-bar-divider" aria-hidden="true"></div>
+
           <!-- 1. FULL TRANSCRIPT (DEFAULT OPEN) -->
           <button
             type="button"
@@ -414,13 +438,85 @@
           <div class="tab-content-panel">
             <div class="note-box note-box--standalone">
               <div class="box-header-row">
-                <h2 class="box-heading">OVERVIEW & SUMMARY</h2>
+                <div class="box-header-title-group">
+                  <h2 class="box-heading">OVERVIEW & SUMMARY</h2>
+                  <span class="box-subheading">Core lecture thesis and academic overview</span>
+                </div>
                 <button type="button" class="btn-secondary btn-sm" (click)="copySummary()">
                   <mat-icon aria-hidden="true">{{ copiedSummary() ? 'check' : 'content_copy' }}</mat-icon>
                   <span>{{ copiedSummary() ? 'Copied' : 'Copy Summary' }}</span>
                 </button>
               </div>
+
               <p class="summary-paragraph">{{ notes()?.summary }}</p>
+
+              <!-- Detailed Concepts & Important Topics Button -->
+              <div class="summary-cta-section">
+                <button
+                  type="button"
+                  class="btn-primary btn-detailed-breakdown"
+                  (click)="toggleDetailedBreakdown()"
+                >
+                  <mat-icon aria-hidden="true">{{ showDetailedBreakdown() ? 'unfold_less' : 'auto_awesome' }}</mat-icon>
+                  <span>{{ showDetailedBreakdown() ? 'Hide Detailed Breakdown' : 'View Full Detailed Concepts & Important Topics ✦' }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-secondary btn-explore-tab"
+                  (click)="setActiveTab('concepts')"
+                >
+                  <mat-icon aria-hidden="true">psychology</mat-icon>
+                  <span>Open Concepts Tab</span>
+                </button>
+              </div>
+
+              <!-- Full Highly Detailed View of Concepts & Important Topics -->
+              @if (showDetailedBreakdown()) {
+                <div class="detailed-breakdown-panel">
+                  <div class="breakdown-header">
+                    <div class="breakdown-title-wrap">
+                      <mat-icon class="breakdown-icon" aria-hidden="true">psychology</mat-icon>
+                      <h3 class="breakdown-title">Comprehensive Concept & Topic Deep-Dive</h3>
+                    </div>
+                    <span class="breakdown-count">{{ notes()?.importantConcepts?.length || 0 }} Key Concepts Analyzed</span>
+                  </div>
+
+                  <p class="breakdown-intro">
+                    In-depth breakdown of every academic concept, theory, formula, and important topic covered in this lecture:
+                  </p>
+
+                  <div class="detailed-concept-cards-grid">
+                    @for (item of notes()?.importantConcepts; track item.concept; let idx = $index) {
+                      <div class="detailed-concept-card">
+                        <div class="concept-card-top">
+                          <span class="concept-number">{{ idx + 1 }}</span>
+                          <h4 class="concept-name">{{ item.concept }}</h4>
+                        </div>
+                        <p class="concept-explanation">{{ item.explanation }}</p>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Key Topic Principles & Steps in Detailed View -->
+                  @if (notes()?.keyPoints?.length; as kpCount) {
+                    <div class="detailed-subtopics-section">
+                      <h4 class="subtopics-heading">
+                        <mat-icon class="subtopic-icon" aria-hidden="true">format_list_bulleted</mat-icon>
+                        Important Topic Principles & Core Steps ({{ kpCount }})
+                      </h4>
+                      <div class="subtopics-list">
+                        @for (point of notes()?.keyPoints; track point; let i = $index) {
+                          <div class="subtopic-item">
+                            <span class="subtopic-num">{{ i + 1 }}.</span>
+                            <span class="subtopic-text">{{ point }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           </div>
         }

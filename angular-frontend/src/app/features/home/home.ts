@@ -74,6 +74,9 @@ export class HomeComponent {
   /** Active concept selected by user to view details. */
   readonly selectedConcept = signal<ImportantConcept | null>(null);
 
+  /** Whether the full detailed concept & topic breakdown is expanded in the Summary tab. */
+  readonly showDetailedBreakdown = signal(false);
+
   /** Whether the user has entered a non-empty URL string. */
   readonly isInputValid = computed(() => this.videoUrl().trim().length > 0);
 
@@ -169,6 +172,13 @@ export class HomeComponent {
   }
 
   /**
+   * Toggles the full detailed concept and important topic view inside the Summary tab.
+   */
+  toggleDetailedBreakdown(): void {
+    this.showDetailedBreakdown.update((current) => !current);
+  }
+
+  /**
    * Resets the entire view back to the initial state (State 1).
    */
   resetToHome(): void {
@@ -179,6 +189,7 @@ export class HomeComponent {
     this.loadingStage.set(1);
     this.videoUrl.set('');
     this.selectedConcept.set(null);
+    this.showDetailedBreakdown.set(false);
     this.activeTab.set('transcript');
   }
 
